@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import puppeteerCore from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import { createServer as createViteServer } from 'vite';
 import crypto from 'crypto';
 
 const app = express();
@@ -30,14 +29,19 @@ app.get(['/api/extract', '/api/extact'], async (req, res) => {
     
     // Check if running on Vercel or locally
     if (process.env.VERCEL) {
-      // Use puppeteer-core and @sparticuz/chromium for Vercel Serverless
-      const sparticuz = chromium as any;
-      browser = await puppeteerCore.launch({
-        args: sparticuz.args,
-        defaultViewport: sparticuz.defaultViewport,
-        executablePath: await sparticuz.executablePath(),
-        headless: sparticuz.headless,
-      });
+      try {
+        // Use puppeteer-core and @sparticuz/chromium for Vercel Serverless
+        const sparticuz = chromium as any;
+        browser = await puppeteerCore.launch({
+          args: sparticuz.args,
+          defaultViewport: sparticuz.defaultViewport,
+          executablePath: await sparticuz.executablePath(),
+          headless: sparticuz.headless,
+        });
+      } catch (launchError) {
+        console.error('Failed to launch Chromium on Vercel:', launchError);
+        return res.status(500).json({ error: 'Failed to launch Chromium', details: String(launchError) });
+      }
     } else {
       // Use standard puppeteer for local development
       const puppeteer = (await import('puppeteer')).default;
@@ -155,6 +159,7 @@ if (!process.env.VERCEL) {
 
     // Vite middleware for development
     if (process.env.NODE_ENV !== 'production') {
+      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: 'spa',
