@@ -2,8 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "maxDuration": 60,
-      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+      "maxDuration": 60
     }
   },
   "routes": [

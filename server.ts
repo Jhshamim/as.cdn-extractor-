@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import puppeteerCore from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import crypto from 'crypto';
 
 const app = express();
@@ -11,11 +11,6 @@ app.set('trust proxy', 1);
 
 // Enable CORS for all routes so it can be used from any site
 app.use(cors());
-
-// In-memory cache to store extracted URLs for the m3u8 generation
-// Note: In a serverless environment like Vercel, this cache will reset on every cold start.
-// For a production Vercel app, you should use Redis (e.g., Upstash) or a database.
-const streamCache = new Map<string, { videoUrl: string, audioUrl: string }>();
 
 // API routes
 app.get(['/api/extract', '/api/extact'], async (req, res) => {
@@ -30,12 +25,14 @@ app.get(['/api/extract', '/api/extact'], async (req, res) => {
     // Check if running on Vercel or locally
     if (process.env.VERCEL) {
       try {
-        // Use puppeteer-core and @sparticuz/chromium for Vercel Serverless
+        // Use puppeteer-core and @sparticuz/chromium-min for Vercel Serverless
         const sparticuz = chromium as any;
         browser = await puppeteerCore.launch({
           args: sparticuz.args,
           defaultViewport: sparticuz.defaultViewport,
-          executablePath: await sparticuz.executablePath(),
+          executablePath: await sparticuz.executablePath(
+            'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+          ),
           headless: sparticuz.headless,
         });
       } catch (launchError) {
@@ -103,15 +100,12 @@ app.get(['/api/extract', '/api/extact'], async (req, res) => {
 
     let combinedM3u8Url = null;
     if (videoUrl && audioUrl) {
-      const id = crypto.randomBytes(16).toString('hex');
-      streamCache.set(id, { videoUrl, audioUrl });
-      
       // Use the request host to generate the correct domain for the M3U8 URL
       const host = req.get('host');
       const protocol = req.protocol || 'https';
       const appUrl = process.env.APP_URL || `${protocol}://${host}`;
       
-      combinedM3u8Url = `${appUrl}/api/cache/${id}/hin_master.m3u8`;
+      combinedM3u8Url = `${appUrl}/api/m3u8?video=${encodeURIComponent(videoUrl)}&audio=${encodeURIComponent(audioUrl)}`;
     }
 
     res.json({
@@ -128,18 +122,18 @@ app.get(['/api/extract', '/api/extact'], async (req, res) => {
 });
 
 // Endpoint to serve the combined m3u8 in the requested format
-// Moved to /api/cache/... so it works easily with Vercel rewrites
-app.get('/api/cache/:id/hin_master.m3u8', (req, res) => {
-  const { id } = req.params;
-  const stream = streamCache.get(id);
+// Stateless endpoint using query parameters (works perfectly on Vercel)
+app.get('/api/m3u8', (req, res) => {
+  const videoUrl = req.query.video as string;
+  const audioUrl = req.query.audio as string;
 
-  if (!stream) {
-    return res.status(404).send('Stream not found or expired');
+  if (!videoUrl || !audioUrl) {
+    return res.status(400).send('Missing video or audio URL parameters');
   }
 
   const proxyBase = 'https://extract-m3u8-proxy.jahinalamshamim.workers.dev/proxy?url=';
-  const proxiedVideo = proxyBase + encodeURIComponent(stream.videoUrl);
-  const proxiedAudio = proxyBase + encodeURIComponent(stream.audioUrl);
+  const proxiedVideo = proxyBase + encodeURIComponent(videoUrl);
+  const proxiedAudio = proxyBase + encodeURIComponent(audioUrl);
 
   const m3u8Content = `#EXTM3U
 #EXT-X-VERSION:3

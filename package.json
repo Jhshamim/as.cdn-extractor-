@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
-    "@sparticuz/chromium": "^143.0.4",
+    "@sparticuz/chromium-min": "^143.0.4",
     "@tailwindcss/vite": "^4.1.14",
     "@types/cors": "^2.8.19",
     "@vitejs/plugin-react": "^5.0.4",
