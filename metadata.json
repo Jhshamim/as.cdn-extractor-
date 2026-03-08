@@ -1,0 +1,5 @@
+{
+  "name": "HLS Extractor API",
+  "description": "A RESTful API that extracts video and audio HLS URLs from a given webpage and combines them into a single M3U8 playlist.",
+  "requestFramePermissions": []
+}
