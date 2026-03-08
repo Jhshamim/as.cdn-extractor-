@@ -41,7 +41,8 @@ app.get(['/api/extract', '/api/extact'], async (req, res) => {
       }
     } else {
       // Use standard puppeteer for local development
-      const puppeteer = (await import('puppeteer')).default;
+      const puppeteerModule = 'puppeteer';
+      const puppeteer = (await import(puppeteerModule)).default;
       browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         headless: true,
@@ -153,7 +154,8 @@ if (!process.env.VERCEL) {
 
     // Vite middleware for development
     if (process.env.NODE_ENV !== 'production') {
-      const { createServer: createViteServer } = await import('vite');
+      const viteModule = 'vite';
+      const { createServer: createViteServer } = await import(viteModule);
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: 'spa',
